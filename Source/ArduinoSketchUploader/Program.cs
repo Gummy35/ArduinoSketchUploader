@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using ArduinoUploader;
+using ArduinoUploader.BootloaderProgrammers.Protocols.AVR109.Messages;
 using CommandLine;
+using Microsoft.Extensions.Logging;
 using NLog;
 
 namespace ArduinoSketchUploader
@@ -40,12 +43,9 @@ namespace ArduinoSketchUploader
             }
         }
 
-        private static void Main(string[] args)
+        private static int doUpload(CommandLineOptions commandLineOptions)
         {
             var logger = new ArduinoSketchUploaderLogger();
-            var commandLineOptions = new CommandLineOptions();
-            if (!Parser.Default.ParseArguments(args, commandLineOptions)) return;
-
             var options = new ArduinoSketchUploaderOptions
             {
                 PortName = commandLineOptions.PortName,
@@ -60,17 +60,21 @@ namespace ArduinoSketchUploader
             try
             {
                 uploader.UploadSketch();
-                Environment.Exit((int) StatusCodes.Success);
+                return (int)StatusCodes.Success;
             }
             catch (ArduinoUploaderException)
             {
-                Environment.Exit((int) StatusCodes.ArduinoUploaderException);
+                return (int)StatusCodes.ArduinoUploaderException;
             }
             catch (Exception ex)
             {
                 logger.Error($"Unexpected exception: {ex.Message}!", ex);
-                Environment.Exit((int) StatusCodes.GeneralRuntimeException);
+                return (int)StatusCodes.GeneralRuntimeException;
             }
+        }
+        private static void Main(string[] args)
+        {
+            var result = Parser.Default.ParseArguments<CommandLineOptions>(args).WithParsed(commandLineOptions => Environment.Exit(doUpload(commandLineOptions)));
         }
 
         private enum StatusCodes
